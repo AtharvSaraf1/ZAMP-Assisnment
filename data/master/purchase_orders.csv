@@ -1,0 +1,9 @@
+po_number,vendor_id,po_date,status,description,owner
+PO-2026-0101,V001,2026-10-20,open,Office consumables - Q4 replenishment,Ananya Kulkarni
+PO-2026-0102,V002,2026-09-28,open,FTL freight Pune to Bengaluru - Oct to Dec,Rohan Deshpande
+PO-2026-0103,V005,2026-10-25,open,Electrical fit-out - Baner store,Vikram Joshi
+PO-2026-0104,V003,2026-10-18,open,Shipping cartons and packing material,Rohan Deshpande
+PO-2026-0105,V004,2026-09-30,open,Housekeeping - Chennai warehouse Oct to Mar,Meera Iyer
+PO-2026-0106,V001,2026-06-12,closed,Printer paper - Q2 (fully billed),Ananya Kulkarni
+PO-2026-0107,V003,2026-11-02,open,Protective packing - fragile SKUs,Rohan Deshpande
+PO-2026-0108,V001,2026-11-05,open,Ergonomic chairs - finance floor,Ananya Kulkarni

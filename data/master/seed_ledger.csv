@@ -1,0 +1,4 @@
+vendor_id,invoice_number,po_number,invoice_date,subtotal,tax,total,status,note,lines
+V002,KL/2026/0911,PO-2026-0102,2026-10-31,250000.00,45000.00,295000.00,approved,Part 1 of PO-2026-0102 (25 trips) - paid 2026-11-14,1:25:250000.00
+V004,IFS-26-27-457,PO-2026-0105,2026-10-31,102000.00,18360.00,120360.00,approved,October housekeeping - paid 2026-11-12,1:1:78000.00|2:1:24000.00
+V001,SOS/2026/0742,PO-2026-0106,2026-07-08,38250.00,6885.00,45135.00,approved,Q2 paper - PO closed after this,1:150:38250.00

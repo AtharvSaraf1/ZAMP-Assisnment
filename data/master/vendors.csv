@@ -1,0 +1,7 @@
+vendor_id,legal_name,gstin,state_code,bank_account,bank_ifsc,status,payment_terms_days,contact_email
+V001,Sharma Office Supplies Pvt Ltd,27AAKCS4417M1ZW,27,001205004471,ICIC0000012,approved,30,accounts@sharmaoffice.example
+V002,Kaveri Logistics LLP,29AAFFK8823R1ZF,29,50200031184420,HDFC0001753,approved,45,billing@kaverilogistics.example
+V003,Deccan Packaging Industries,27AADFD2290P1Z3,27,39811020005512,SBIN0004012,approved,30,ar@deccanpack.example
+V004,Iyer Facility Services,33AAIFI6604K1ZC,33,7701458820,UTIB0000288,approved,15,finance@iyerfacility.example
+V005,Mehta Electricals & Co,24AAHFM3315L1ZC,24,912020044518873,KKBK0002581,approved,30,accounts@mehtaelectricals.example
+V006,Bharat Print House,27AABFB7712Q1Z4,27,60311780045,BARB0PUNEXX,blocked,30,bharatprint@example.com
