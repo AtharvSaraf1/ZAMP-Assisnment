@@ -1,77 +1,109 @@
-# Ledgerline: AP invoice desk (Zamp case study, PS-1)
+# Ledgerline
 
-Ledgerline takes a vendor invoice PDF and returns a decision: **Approved**, **Needs review** or **Rejected**.
-Every reason behind it is shown, and every stage is visible as it runs.
+Ledgerline is an accounts-payable invoice desk. You give it a vendor invoice (PDF). It reads the invoice, checks it against the company's vendors, purchase orders and past invoices, and decides one of three things:
 
-AI reads the document. Fixed rules make the decision, so every decision can be explained and repeated.
+- **Approved**: everything matches, ready to pay.
+- **Needs review**: a person must look. The app says who should look and why.
+- **Rejected**: must not be paid, for example a duplicate or a fake vendor.
 
-See `PLAN.txt` for the process map, assumptions and edge-case design.
+Every step is shown live in the browser while it runs. Every decision comes with the reasons behind it.
 
-## Run it
+## How to start
+
+You need Python 3.11.
 
 ```bash
+git clone https://github.com/AtharvSaraf1/ZAMP-Assisnment.git
+cd ZAMP-Assisnment
 python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt        # (Linux/macOS: .venv/bin/pip)
-# optional AI reader: put GEMINI_API_KEY=... in .env
-.venv/Scripts/python -m uvicorn app.main:app --port 8000
+.venv\Scripts\activate            # Windows
+# source .venv/bin/activate       # macOS / Linux
+pip install -r requirements.txt
 ```
 
-Open http://localhost:8000.
+**Optional: turn on the AI reader.** Create a file named `.env` in the project folder with this line:
 
-- Without a key, the app runs in local-parser mode: text PDFs work, scanned PDFs go to review.
-- `python scripts/make_samples.py` rebuilds the demo PDFs.
-- `pip install -r requirements-dev.txt && pytest` runs the 40 tests.
-- Docker: `docker build -t ledgerline . && docker run -p 8000:8000 -e GEMINI_API_KEY=... ledgerline`
+```
+GEMINI_API_KEY=your-key-here
+```
 
-## What happens to an invoice
+Without a key the app still runs, using its built-in text reader. That reader cannot read scanned (image-only) invoices; those go to "Needs review".
 
-| Stage | What it does |
+**Start the app:**
+
+```bash
+uvicorn app.main:app --port 8000
+```
+
+Then open http://localhost:8000.
+
+**Use it:**
+
+1. On **Process invoice**, pick one of the sample invoices (or drop your own PDF) and press **Process invoice**.
+2. Watch the stages run. The decision is stamped on the invoice, with the reasons and next steps below it.
+3. **Runs** lists every invoice processed so far. Click a row to open it. Held invoices can be approved or rejected there.
+4. **Purchase orders** shows how much of each PO has been billed.
+5. **Reset demo data** clears all runs and restores the starting data. The app remembers past invoices to catch duplicates, so reset before running the same samples again.
+
+## What the code does
+
+An invoice goes through nine steps. They are in `app/pipeline.py`.
+
+| Step | What happens |
 |---|---|
-| Intake | Opens the PDF, hashes it, and detects whether it is a scanned image with no text layer |
-| Read document | Gemini reads the PDF, scans included, into one fixed schema. If the AI fails, a local parser takes over (text PDFs only) |
-| Validate document | Checks required fields and that the invoice is billed to our GSTIN. Verifies the GSTIN check digit, re-adds lines + tax = total, checks the date window, and checks GST type (CGST+SGST in-state, IGST out of state) |
-| Vendor check | Identifies the vendor by GSTIN (then by name), checks it is not blocked, and compares the bank account to the vendor master |
-| Duplicate check | Same invoice number however it is written (`IFS/26-27/0457` = `IFS-26-27-457`), same file, or same amount within 10 days |
-| PO match | Cleans the PO number (`2026/0102` → `PO-2026-0102`). With no PO printed, it scores the vendor's open POs and *suggests* one |
-| Line & amount match | Pairs invoice lines with PO lines; checks price (2% tolerance) and quantity, both cumulative across earlier invoices; checks PO value (1%) and GST rate |
-| Decision | Any reject-level failure → Rejected; else any review-level failure → Needs review; else Approved. Routes the invoice to the PO owner, AP lead or vendor, and drafts the email to the vendor |
-| Record | Writes the result to the ledger. Approved invoices use up PO balance. Held invoices count once a reviewer approves them |
+| Intake | Opens the PDF and checks whether it has text or is a scanned image |
+| Read document | Gemini AI reads the PDF into fixed fields (vendor, GSTIN, invoice number, dates, PO number, lines, tax, total, bank details). If the AI is not available, a local text reader is used |
+| Validate document | Checks required fields and that the invoice is addressed to our company. Also checks the GSTIN check digit, that lines + tax add up to the total, the date, and the GST type (CGST+SGST inside the state, IGST from another state) |
+| Vendor check | Finds the vendor by GSTIN in the approved vendor list. Flags blocked vendors, a known name with a different GSTIN, and bank details that differ from our records |
+| Duplicate check | Catches the same invoice number even when written differently (`INV/0457` = `INV-457`), the same file, or the same amount within 10 days |
+| PO match | Finds the purchase order. If the invoice has no PO number, it suggests the best matching open PO but never approves on a guess |
+| Line & amount match | Compares each line with the PO: price (2% tolerance), quantity, and total value. Quantity and total value count invoices already billed on the same PO |
+| Decision | A rule that must block payment → Rejected; a rule that needs a person → Needs review; nothing raised → Approved. Also drafts an email to the vendor when something is needed from them |
+| Record | Saves the result in the invoice ledger so later invoices are checked against it |
 
-## Demo inputs (`samples/invoices/`)
+The AI only reads the document. The decision is always made by the fixed rules in the code, so the same invoice always gets the same answer. The rule limits are in `app/rules.py`.
 
-| File | What it tests | Result |
+## Project structure
+
+```
+app/
+  main.py            web server and API (FastAPI)
+  pipeline.py        the nine steps and the decision rules
+  rules.py           tolerance limits and policy text
+  identifiers.py     GSTIN check digit, cleaning of invoice/PO numbers and names
+  extract/gemini.py  AI reader (Gemini) with a cache per file
+  extract/local_parser.py  text reader used when AI is off
+  db.py              SQLite storage: runs, live step events, invoice ledger
+  master.py          loads vendors and purchase orders
+  models.py          the invoice fields every reader fills
+web/                 the browser interface (HTML, CSS, JavaScript)
+data/master/         sample company data: vendors, purchase orders, past invoices
+samples/invoices/    six sample invoice PDFs
+scripts/make_samples.py  creates the sample PDFs
+tests/               automated tests
+```
+
+## Sample invoices
+
+| File | What it shows | Result |
 |---|---|---|
-| 01 happy path | Clean invoice, exact PO match | Approved |
-| 02 split PO | Part 2 of a PO; with part 1 (already approved) it is ₹30,000 / 3 trips over | Needs review |
-| 03 duplicate re-send | Paid invoice re-sent with a new date and the number written differently | Rejected |
-| 04 scanned, no PO | Image-only scan, prices include GST, no PO printed. AI reads it and PO-2026-0104 is suggested (3 of 3 lines) | Needs review |
-| 05 impersonation | Known vendor name with someone else's GSTIN and a "changed" bank account | Rejected |
-| 06 price creep (bonus) | One line 6% above PO price | Needs review |
+| 01 Sharma Office Supplies | Clean invoice that matches its PO exactly | Approved |
+| 02 Kaveri Logistics | Second invoice on a PO; together with the first it bills more than the PO | Needs review |
+| 03 Iyer Facility | An already-paid invoice sent again with a new date | Rejected |
+| 04 Deccan Packaging | Scanned image, prices include GST, no PO number; the right PO is suggested | Needs review |
+| 05 "Sharma Office Supplies" | Known vendor name but a different GSTIN and new bank account | Rejected |
+| 06 Mehta Electricals | One line priced 6% above the PO | Needs review |
 
-Suggested demo order: 01 → 02 → 03 → 04 → 05.
+## Tests
 
-- Then approve the held run 02 from the run page and watch PO-2026-0102 move on the Purchase orders tab.
-- Run 01 again: it is now rejected as a duplicate.
-- **Reset demo data** restores the starting ledger.
+```bash
+pytest
+```
 
-Reader modes:
+The tests run every sample through the API and check each rule. They also cover the live step stream, reviewer approval and reset.
 
-- **AI (cached)**: reuses the AI's earlier reading of the same file. It is instant and gives the same answer every time.
-- **AI (fresh call)**: calls Gemini live, about 15–20 s.
-- **Local parser only**: shows the no-AI fallback.
+## Limits
 
-## Design choices
-
-- **AI reads, rules decide.** The model returns data in a strict schema and is told never to invent or infer values (for example, a PO number). The checks are plain Python, so the same input always gets the same decision with the same reasons.
-- **History matters.** Split billing and duplicates can only be caught against a ledger, so the ledger starts seeded with invoices billed before the system existed (`data/master/seed_ledger.csv`).
-- **Suggest, don't assume.** An inferred PO is shown with its evidence but always goes to a person.
-- **Fraud signals are not the vendor's word.** Identity is by GSTIN. The rejection email goes to the address in our vendor master, not the one printed on the invoice.
-- **Live view is real.** Each stage writes an event to SQLite and the browser receives it by Server-Sent Events. There are no fake timers.
-
-## Assumptions and limits
-
-- India, INR, GST. Two-way match (invoice vs PO); goods receipt (three-way match) is not modelled.
-- One invoice per PDF. The first page is used for the preview image.
-- Intake is by upload. Email inbox intake, ERP posting and payment runs are out of scope.
-- The local parser handles common label layouts only. Anything it misses fails a check and goes to review rather than being approved.
-- Runs are processed one at a time through the ledger-dependent stages, so two invoices on the same PO cannot both use the same balance.
+- Built for Indian invoices (INR, GST). Matches invoice against PO only (no goods-receipt check).
+- One invoice per PDF; invoices are uploaded, not read from an email inbox.
+- Data is stored in a local SQLite file (`data/app.db`).

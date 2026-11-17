@@ -7,3 +7,8 @@ data/llm_cache/
 data/uploads/
 *.pdf
 !samples/invoices/*.pdf
+
+# local only: planning notes and deployment files
+PLAN.txt
+Dockerfile
+.dockerignore

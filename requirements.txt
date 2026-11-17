@@ -4,3 +4,7 @@ pymupdf==1.25.1
 requests==2.32.3
 pydantic==2.10.4
 python-multipart==0.0.20
+# sample invoice generator and tests
+reportlab==4.2.5
+pytest==8.3.4
+httpx==0.28.1
