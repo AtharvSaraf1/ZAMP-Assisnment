@@ -196,7 +196,7 @@ async function showRun(id) {
         <div id="after"></div>
       </div>
       <aside class="doc">
-        <div class="frame" id="frame"><img src="/api/runs/${run.id}/page.png" alt="First page of the invoice"></div>
+        <div class="frame" id="frame"><img src="/api/runs/${run.id}/page.png?v=${encodeURIComponent(run.file_hash)}" alt="First page of the invoice"></div>
         <p class="scan-note" id="scan-note"></p>
       </aside>
     </div>`;
